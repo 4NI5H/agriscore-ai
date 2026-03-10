@@ -1,0 +1,8 @@
+{
+  "name": "AgriScore - AI Credit Scoring for Farmers",
+  "description": "A fintech platform for assessing farmer creditworthiness using AI, weather data, and financial history.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ]
+}
