@@ -285,39 +285,6 @@ async function startServer() {
 
   app.get("/api/weather/portfolio", async (req, res) => {
     try {
-      const normalizeStateForGeo = (raw: string) => {
-        const s = String(raw || "").trim();
-        if (!s) return "";
-        const upper = s.toUpperCase();
-        const map: Record<string, string> = {
-          UP: "Uttar Pradesh",
-          HP: "Himachal Pradesh",
-          AP: "Andhra Pradesh",
-          MP: "Madhya Pradesh",
-          RJ: "Rajasthan",
-          HR: "Haryana",
-          PB: "Punjab",
-          UK: "Uttarakhand",
-          JH: "Jharkhand",
-          BR: "Bihar",
-          GJ: "Gujarat",
-          MH: "Maharashtra",
-          KA: "Karnataka",
-          TN: "Tamil Nadu",
-          KL: "Kerala",
-          OD: "Odisha",
-          OR: "Odisha",
-          WB: "West Bengal",
-          AS: "Assam",
-          CG: "Chhattisgarh",
-          DL: "Delhi",
-          TS: "Telangana"
-        };
-        if (map[upper]) return map[upper];
-        if (s === "Jammu & Kashmir") return "Jammu and Kashmir";
-        return s.replace(/&/g, "and");
-      };
-
       // District-first targeting: if we have district, use it; otherwise don't attempt location targeting.
       // We keep state alongside district only to disambiguate geocoding.
       const districtRows = db
@@ -355,23 +322,13 @@ async function startServer() {
       // Build forecasts for each district (7 days), using the same geocode+forecast flow as /api/weather
       const stateForecasts = await Promise.all(
         districts.map(async ({ district, state }) => {
-          const normState = normalizeStateForGeo(state);
-          const regionLabel = normState ? `${district}, ${normState}` : district;
+          const regionLabel = state ? `${district}, ${state}` : district;
+          const geoQuery = state ? `${district}, ${state}, India` : `${district}, India`;
 
-          const tryGeo = async (name: string) => {
-            const geoRes = await fetch(
-              `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-                name
-              )}&count=1&format=json&country=IN&language=en`
-            );
-            return geoRes.json();
-          };
-
-          // Try strict (district + state), then fallback to district-only.
-          const geoData =
-            (normState ? await tryGeo(`${district}, ${normState}`) : await tryGeo(`${district}`)) ||
-            (await tryGeo(`${district}`));
-
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(geoQuery)}&count=1&format=json`
+          );
+          const geoData = await geoRes.json();
           if (!geoData.results || geoData.results.length === 0) {
             return { state: regionLabel, ok: false, reason: "geocode_failed" as const };
           }
