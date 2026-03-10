@@ -2,61 +2,16 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
-type ClimateForecastInput = { state: string; maxTemp: number; totalPrecip: number };
-
-export async function generateMacroClimateAlert(state: string, maxTemp: number, totalPrecip: number): Promise<any>;
-export async function generateMacroClimateAlert(inputs: ClimateForecastInput[]): Promise<any>;
-export async function generateMacroClimateAlert(
-  arg1: string | ClimateForecastInput[],
-  arg2?: number,
-  arg3?: number
-) {
-  const isMulti = Array.isArray(arg1);
-
-  const prompt = isMulti
-    ? `
+export async function generateMacroClimateAlert(state: string, maxTemp: number, totalPrecip: number) {
+  const prompt = `
     You are an AI Climate Risk Analyst for an agricultural lending platform.
-    Analyze the following 7-day weather forecasts for multiple Indian regions (district/state combos), and produce a portfolio-wide macro climate alert.
+    Analyze the following 7-day weather forecast for the state of ${state}:
+    - Maximum Temperature: ${maxTemp.toFixed(1)}°C
+    - Total Precipitation: ${totalPrecip.toFixed(1)}mm
 
-    Forecasts (per region):
-    ${arg1
-      .map(
-        (s) =>
-          `- ${s.state}: Max Temp ${Number(s.maxTemp).toFixed(1)}°C, Total Precip ${Number(s.totalPrecip).toFixed(1)}mm`
-      )
-      .join("\n")}
+    Also, use Google Search to find the latest real-time news about weather alerts, disturbances (like Western Disturbances), or climate events currently affecting ${state}.
 
-    Use Google Search to find the latest real-time news about weather alerts, disturbances (like Western Disturbances), or climate events currently affecting any of these regions.
-
-    Goals:
-    - Identify which regions are likely impacted by near-term climate risk.
-    - Summarize the dominant pattern(s) (heatwave, heavy rainfall, dry spell, WD, cyclone, etc).
-
-    Provide the response in JSON format matching this schema:
-    {
-      "title": "Short, punchy title (e.g., Portfolio Climate Watch: Heat Stress)",
-      "description": "Brief description of the macro pattern, incorporating real-time news.",
-      "impact": "Potential impact on crops and farmers across impacted regions.",
-      "action": "Recommended action for the lending platform or farmers.",
-      "type": "success" | "warning" | "danger" | "info",
-      "affectedStates": ["Region A", "Region B"]
-    }
-
-    Rules:
-    - Set "affectedStates" to only the regions meaningfully impacted (avoid listing all).
-    - Use "success" for stable/good weather across most regions, "warning" for moderate risks, and "danger" for severe risks.
-
-    IMPORTANT: Return ONLY the raw JSON object. Do NOT wrap the response in \`\`\`json code blocks. Do not include any other text.
-  `
-    : `
-    You are an AI Climate Risk Analyst for an agricultural lending platform.
-    Analyze the following 7-day weather forecast for the state of ${arg1}:
-    - Maximum Temperature: ${Number(arg2).toFixed(1)}°C
-    - Total Precipitation: ${Number(arg3).toFixed(1)}mm
-
-    Also, use Google Search to find the latest real-time news about weather alerts, disturbances (like Western Disturbances), or climate events currently affecting ${arg1}.
-
-    Generate a macro-climate alert or any other factor which can affect the agricultural portfolio in this region based on both the forecast and the real-time news.
+    Generate a macro-climate alert for the agricultural portfolio in this region based on both the forecast and the real-time news.
     Provide the response in JSON format matching this schema:
     {
       "title": "Short, punchy title (e.g., Heavy Rainfall Alert: Kerala)",
