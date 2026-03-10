@@ -277,8 +277,8 @@ export default function FarmerForm({ onComplete }: { onComplete: (id: number) =>
 
   useEffect(() => {
     // Default to Patna on mount
-    const latitude = 25.5941;
-    const longitude = 85.1376;
+    const latitude = 0;
+    const longitude = 0;
     setFormData(prev => ({
       ...prev,
       land: { ...prev.land, latitude, longitude }
