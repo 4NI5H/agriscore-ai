@@ -135,44 +135,65 @@ export default function Dashboard({ onFarmerClick, onNavigateToList }: { onFarme
       </header>
 
       {/* Macro Alerts Banner */}
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`bg-gradient-to-r p-1 rounded-3xl shadow-lg ${
-          climateAlert.type === 'danger' ? 'from-red-500 to-orange-400 shadow-red-200/50' : 
-          climateAlert.type === 'warning' ? 'from-amber-500 to-yellow-400 shadow-amber-200/50' : 
-          climateAlert.type === 'success' ? 'from-emerald-500 to-teal-400 shadow-emerald-200/50' :
-          'from-blue-500 to-indigo-400 shadow-blue-200/50'
-        }`}
-      >
-        <div className="bg-white/95 backdrop-blur-sm p-5 rounded-[22px] flex items-center justify-between">
+      {climateAlert.type !== 'success' ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`bg-gradient-to-r p-1 rounded-3xl shadow-lg ${
+            climateAlert.type === 'danger' ? 'from-red-500 to-orange-400 shadow-red-200/50' : 
+            climateAlert.type === 'warning' ? 'from-amber-500 to-yellow-400 shadow-amber-200/50' :
+            'from-blue-500 to-indigo-400 shadow-blue-200/50'
+          }`}
+        >
+          <div className="bg-white/95 backdrop-blur-sm p-5 rounded-[22px] flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center animate-pulse ${
+                climateAlert.type === 'danger' ? 'bg-red-100 text-red-600' : 
+                climateAlert.type === 'warning' ? 'bg-amber-100 text-amber-600' :
+                'bg-blue-100 text-blue-600'
+              }`}>
+                <CloudLightning size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900">{climateAlert.title}</h4>
+                <p className="text-xs text-gray-600 font-medium">{climateAlert.description}.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowImpactModal(true)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors ${
+                climateAlert.type === 'danger' ? 'bg-red-50 text-red-700 hover:bg-red-100' : 
+                climateAlert.type === 'warning' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' :
+                'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              }`}
+            >
+              View Impact
+            </button>
+          </div>
+        </motion.div>
+      ) : (
+        <div className="border border-emerald-200 bg-emerald-50/70 rounded-3xl p-5 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center animate-pulse ${
-              climateAlert.type === 'danger' ? 'bg-red-100 text-red-600' : 
-              climateAlert.type === 'warning' ? 'bg-amber-100 text-amber-600' : 
-              climateAlert.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
-              'bg-blue-100 text-blue-600'
-            }`}>
-              <CloudLightning size={20} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-100 text-emerald-600">
+              <CheckCircle size={20} />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-gray-900">{climateAlert.title}</h4>
-              <p className="text-xs text-gray-600 font-medium">{climateAlert.description} {affectedFarmers.length} farmers in your portfolio are in high-risk zones.</p>
+              <h4 className="text-sm font-bold text-gray-900">
+                {climateAlert.title || 'Stable Climate Conditions'}
+              </h4>
+              <p className="text-xs text-gray-600 font-medium">
+                {climateAlert.description || 'Stable weather patterns expected. No climate alerts for your portfolio.'}
+              </p>
             </div>
           </div>
           <button 
             onClick={() => setShowImpactModal(true)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors ${
-              climateAlert.type === 'danger' ? 'bg-red-50 text-red-700 hover:bg-red-100' : 
-              climateAlert.type === 'warning' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 
-              climateAlert.type === 'success' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' :
-              'bg-blue-50 text-blue-700 hover:bg-blue-100'
-            }`}
+            className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white text-emerald-700 border border-emerald-100 hover:bg-emerald-100 transition-colors"
           >
             View Impact
           </button>
         </div>
-      </motion.div>
+      )}
 
       {/* Bento Grid Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

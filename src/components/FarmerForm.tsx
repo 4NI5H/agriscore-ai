@@ -24,12 +24,12 @@ export default function FarmerForm({ onComplete }: { onComplete: (id: number) =>
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [formData, setFormData] = useState({
     farmer: { name: '', aadhaar_number: '', phone: '', village: '', district: '', state: '' },
-    land: { latitude: 28.6139, longitude: 77.2090, land_size_acres: 0, soil_type: 'Alluvial', ownership_status: 'Owned' },
-    weather: { historical_rainfall: 800, drought_probability: 0.1, flood_risk: 0.05, seasonal_rainfall_pattern: 'Stable' },
+    land: { latitude: 0, longitude: 0, land_size_acres: 0, soil_type: 'Alluvial', ownership_status: 'Owned' },
+    weather: { historical_rainfall: 0, drought_probability: 0.0, flood_risk: 0.00, seasonal_rainfall_pattern: 'Stable' },
     crop: { crop_type: 'Wheat', farming_season: 'Kharif', irrigation_type: 'Borewell', avg_yield_last_3_seasons: 0 },
-    market: { avg_crop_price: 2000, price_volatility: 0.15 },
+    market: { avg_crop_price: 0, price_volatility: 0 },
     financial: { annual_income: 0, existing_loans: 0, repayment_history: 'Good', assets_owned: '' },
-    credit: { cibil_score: 750, cooperative_bank_loans: 0, microfinance_loans: 0 }
+    credit: { cibil_score: 0, cooperative_bank_loans: 0, microfinance_loans: 0 }
   });
 
   // Speech Recognition Setup
@@ -269,7 +269,7 @@ export default function FarmerForm({ onComplete }: { onComplete: (id: number) =>
     }
   };
 
-  const [citySearch, setCitySearch] = useState('Patna, Bihar');
+  const [citySearch, setCitySearch] = useState('');
   const [isSearchingCity, setIsSearchingCity] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -283,9 +283,9 @@ export default function FarmerForm({ onComplete }: { onComplete: (id: number) =>
       ...prev,
       land: { ...prev.land, latitude, longitude }
     }));
-    handleChange('farmer', 'village', 'Patna');
-    handleChange('farmer', 'district', 'Patna');
-    handleChange('farmer', 'state', 'Bihar');
+    handleChange('farmer', 'village', '');
+    handleChange('farmer', 'district', '');
+    handleChange('farmer', 'state', '');
     fetchWeatherAndYield(latitude, longitude);
   }, []);
 
