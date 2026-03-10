@@ -283,6 +283,170 @@ async function startServer() {
     }
   });
 
+  app.get("/api/weather/portfolio", async (req, res) => {
+    try {
+      // District-first targeting: if we have district, use it; otherwise don't attempt location targeting.
+      // We keep state alongside district only to disambiguate geocoding.
+      const districtRows = db
+        .prepare(
+          `
+          SELECT DISTINCT district, state
+          FROM farmers
+          WHERE district IS NOT NULL AND TRIM(district) <> ''
+        `
+        )
+        .all() as any[];
+
+      const districts = districtRows
+        .map((r) => ({
+          district: String(r.district),
+          state: r.state ? String(r.state) : ""
+        }))
+        .filter((r) => r.district && r.district.trim().length > 0);
+
+      if (districts.length === 0) {
+        return res.json({
+          alert: {
+            title: "Stable Climate Conditions",
+            description: "No district data available for targeting; defaulting to safe monitoring.",
+            impact: "All regions appear stable; no farmer profiles are flagged as impacted.",
+            action: "Continue standard monitoring and ensure district is captured for better targeting.",
+            type: "success",
+            affectedStates: []
+          },
+          affectedFarmers: [],
+          stateForecasts: []
+        });
+      }
+
+      // Build forecasts for each district (7 days), using the same geocode+forecast flow as /api/weather
+      const stateForecasts = await Promise.all(
+        districts.map(async ({ district, state }) => {
+          const regionLabel = state ? `${district}, ${state}` : district;
+          const geoQuery = state ? `${district}, ${state}, India` : `${district}, India`;
+
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(geoQuery)}&count=1&format=json`
+          );
+          const geoData = await geoRes.json();
+          if (!geoData.results || geoData.results.length === 0) {
+            return { state: regionLabel, ok: false, reason: "geocode_failed" as const };
+          }
+
+          const { latitude, longitude } = geoData.results[0];
+          const weatherRes = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,precipitation_sum&timezone=auto`
+          );
+          const weatherData = await weatherRes.json();
+          if (!weatherData.daily) {
+            return { state: regionLabel, ok: false, reason: "weather_failed" as const };
+          }
+
+          const maxTemps = weatherData.daily.temperature_2m_max;
+          const precipitations = weatherData.daily.precipitation_sum;
+          const maxTemp = Math.max(...maxTemps);
+          const totalPrecip = precipitations.reduce((a: number, b: number) => a + b, 0);
+
+          return { state: regionLabel, ok: true, maxTemp, totalPrecip };
+        })
+      );
+
+      const okForecasts = stateForecasts.filter((s: any) => s.ok) as any[];
+      if (okForecasts.length === 0) {
+        return res.json({
+          alert: {
+            title: "Climate Monitoring",
+            description: "Unable to fetch forecasts for portfolio states.",
+            impact: "Monitoring standard conditions.",
+            action: "Continue standard monitoring.",
+            type: "info",
+            affectedStates: []
+          },
+          affectedFarmers: [],
+          stateForecasts
+        });
+      }
+
+      // Ask AI for a portfolio-wide alert + which regions (district/state combos) are impacted
+      let alert: any = null;
+      try {
+        alert = await generateMacroClimateAlert(
+          okForecasts.map((s: any) => ({
+            state: s.state,
+            maxTemp: s.maxTemp,
+            totalPrecip: s.totalPrecip
+          }))
+        );
+      } catch (aiError) {
+        console.error("AI Portfolio Alert Generation Error:", aiError);
+      }
+
+      // Fallback impacted regions if AI fails or omits affectedStates
+      const fallbackAffectedStates = okForecasts
+        .filter((s: any) => s.totalPrecip > 100 || (s.maxTemp > 35 && s.totalPrecip < 10) || s.maxTemp > 38)
+        .map((s: any) => s.state);
+
+      if (!alert) {
+        alert = {
+          title: "Portfolio Climate Monitoring",
+          description: "Portfolio-wide climate assessment generated using forecast heuristics (AI unavailable).",
+          impact: "Some regions may face near-term weather stress.",
+          action: "Prioritize outreach and monitoring for affected regions.",
+          type: fallbackAffectedStates.length > 0 ? "warning" : "success",
+          affectedStates: fallbackAffectedStates
+        };
+      }
+
+      const affectedStates: string[] = Array.isArray(alert.affectedStates)
+        ? alert.affectedStates.map((s: any) => String(s)).filter(Boolean)
+        : fallbackAffectedStates;
+
+      // If nothing is impacted, force a clean "all safe" response
+      if (affectedStates.length === 0) {
+        alert = {
+          title: "Stable Climate Conditions",
+          description: "No significant near-term climate risks detected across your portfolio states.",
+          impact: "All regions appear stable; no farmer profiles are flagged as impacted.",
+          action: "Continue standard monitoring and outreach.",
+          type: "success",
+          affectedStates: []
+        };
+      }
+
+      // Fetch affected farmers across all affected states
+      let affectedFarmers: any[] = [];
+      if (affectedStates.length > 0) {
+        // affectedStates here are region labels like "Pune, Maharashtra" or "Pune"
+        const affectedDistricts = affectedStates
+          .map((label) => String(label).split(",")[0].trim())
+          .filter(Boolean);
+
+        if (affectedDistricts.length > 0) {
+          const placeholders = affectedDistricts.map(() => "?").join(",");
+          affectedFarmers = db
+            .prepare(
+              `
+              SELECT id, name, phone, village, district, state
+              FROM farmers
+              WHERE district IN (${placeholders})
+              ORDER BY created_at DESC
+            `
+            )
+            .all(...affectedDistricts) as any[];
+        }
+      }
+
+      res.json({
+        alert,
+        affectedFarmers,
+        stateForecasts
+      });
+    } catch (error) {
+      console.error("Weather Portfolio API Error:", error);
+      res.status(500).json({ error: "Failed to fetch portfolio weather data" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
